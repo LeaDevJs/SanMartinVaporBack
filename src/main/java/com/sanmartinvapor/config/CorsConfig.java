@@ -14,10 +14,15 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("*") // 👈 permite todos los dominios
+                        // 🔹 SOLO permite los dominios válidos (local y vercel)
+                        .allowedOrigins(
+                                "https://sanmartinvapor.vercel.app",
+                                "http://localhost:3000"
+                        )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
-                        .allowCredentials(false); // ⚠️ si usás "*" no puede ir en true
+                        // ✅ Necesario para que el navegador guarde la cookie JSESSIONID
+                        .allowCredentials(true);
             }
         };
     }
