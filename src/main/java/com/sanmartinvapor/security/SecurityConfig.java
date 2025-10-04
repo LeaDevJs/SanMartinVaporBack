@@ -7,11 +7,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import java.util.List;
 
 @Configuration
-@EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
@@ -30,24 +32,32 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filter(HttpSecurity http) throws Exception {
         http
-                .authenticationProvider(authProvider(null, passwordEncoder())) // fuerza a usar nuestro proveedor
-                .cors(cors -> cors.configurationSource(request -> {
-                    var c = new org.springframework.web.cors.CorsConfiguration();
-                    c.setAllowedOrigins(List.of("*")); // 🔥 permite todos los orígenes (Vercel)
-                    c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    c.setAllowedHeaders(List.of("*"));
-                    c.setAllowCredentials(false);
-                    return c;
-                }))
-                .csrf(csrf -> csrf.disable()) // ⚠️ necesario para permitir fetch sin token
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/health").permitAll()
-                        .requestMatchers("/admin/**").permitAll() // 🔓 libre para front
-                        .anyRequest().permitAll()
+                        .requestMatchers("/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
+                        .anyRequest().authenticated()
                 )
-                .formLogin(login -> login.disable()) // 🚫 desactiva login de Spring (causaba la redirección)
-                .httpBasic(basic -> basic.disable()); // 🚫 desactiva basic auth
-
+                .formLogin(login -> login.permitAll())
+                .logout(logout -> logout.permitAll())
+                .httpBasic(httpBasic -> {}); // por compatibilidad con Postman
         return http.build();
+    }
+
+    // ✅ Permitir sesiones y CORS desde tu dominio de React
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "https://sanmartinvapor.vercel.app"
+        ));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true); // 🔑 permite enviar cookies (JSESSIONID)
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }
