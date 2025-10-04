@@ -1,20 +1,13 @@
-# Imagen base con Java 17 (Render usa Java 17 por defecto)
-FROM openjdk:17-jdk-slim
-
-# Directorio de trabajo dentro del contenedor
+# Usa imagen oficial de Maven para compilar
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
-
-# Copiamos los archivos del proyecto
 COPY . .
+RUN mvn clean package -DskipTests
 
-# Damos permiso de ejecución al wrapper de Maven
-RUN chmod +x mvnw
+# Usa JDK más liviano para correr la app
+FROM eclipse-temurin:17-jdk-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# Construimos el proyecto sin correr los tests
-RUN ./mvnw clean package -DskipTests
-
-# Expone el puerto 8080
 EXPOSE 8080
-
-# Comando para iniciar el backend
-CMD ["java", "-jar", "target/*.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
