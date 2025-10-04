@@ -2,6 +2,7 @@ package com.sanmartinvapor.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,11 +17,13 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
+    // 🔑 Encriptador de contraseñas
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // 🔑 Proveedor de autenticación con AdminUserDetailsService
     @Bean
     DaoAuthenticationProvider authProvider(AdminUserDetailsService uds, PasswordEncoder pe) {
         DaoAuthenticationProvider p = new DaoAuthenticationProvider();
@@ -29,23 +32,33 @@ public class SecurityConfig {
         return p;
     }
 
+    // 🔐 Configuración principal de seguridad
     @Bean
     SecurityFilterChain filter(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable()) // desactiva CSRF (para compatibilidad con React)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // permite CORS
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ Rutas públicas
                         .requestMatchers("/health").permitAll()
-                        .requestMatchers("/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/admin/personal/**", "/admin/servicios/**").permitAll()
+
+                        // 🔒 Rutas protegidas (solo admin)
+                        .requestMatchers(HttpMethod.POST, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
+
+                        // 🔒 cualquier otra ruta necesita autenticación
                         .anyRequest().authenticated()
                 )
-                .formLogin(login -> login.permitAll())
-                .logout(logout -> logout.permitAll())
-                .httpBasic(httpBasic -> {}); // por compatibilidad con Postman
+                .formLogin(login -> login.permitAll()) // habilita login de formulario (para el admin)
+                .logout(logout -> logout.permitAll())   // logout permitido
+                .httpBasic(httpBasic -> {});            // por compatibilidad con Postman
+
         return http.build();
     }
 
-    // ✅ Permitir sesiones y CORS desde tu dominio de React
+    // 🌍 Configuración global de CORS (para localhost y vercel)
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -55,7 +68,7 @@ public class SecurityConfig {
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // 🔑 permite enviar cookies (JSESSIONID)
+        config.setAllowCredentials(true); // 🔑 permite cookies (JSESSIONID)
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
