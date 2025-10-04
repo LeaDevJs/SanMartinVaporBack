@@ -47,9 +47,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .formLogin(login -> login
-                        .loginProcessingUrl("/login") // ✅ endpoint que maneja Spring Security
+                        .loginProcessingUrl("/login")
+                        .successForwardUrl("/login-success")  // ✅ redirige acá si el login fue correcto
+                        .failureForwardUrl("/login-failure")  // ❌ si las credenciales fallan
                         .permitAll()
                 )
+
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .permitAll()
