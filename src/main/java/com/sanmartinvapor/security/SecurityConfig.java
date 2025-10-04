@@ -36,27 +36,25 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filter(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // desactiva CSRF (para compatibilidad con React)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // permite CORS
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ Rutas públicas
                         .requestMatchers("/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/admin/personal/**", "/admin/servicios/**").permitAll()
-
-                        // 🔒 Rutas protegidas (solo admin)
                         .requestMatchers(HttpMethod.POST, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
-
-                        // 🔒 cualquier otra ruta necesita autenticación
                         .anyRequest().authenticated()
                 )
-                .formLogin(login -> login.permitAll()) // habilita login de formulario (para el admin)
-                .logout(logout -> logout.permitAll())   // logout permitido
-                .httpBasic(httpBasic -> {});            // por compatibilidad con Postman
-
+                .formLogin(login -> login
+                        .loginProcessingUrl("/login") // 👈 permite login externo
+                        .permitAll()
+                )
+                .logout(logout -> logout.permitAll())
+                .httpBasic(httpBasic -> {});
         return http.build();
     }
+
 
     // 🌍 Configuración global de CORS (para localhost y vercel)
     @Bean
