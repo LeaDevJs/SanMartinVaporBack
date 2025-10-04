@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health").permitAll()
+                        .requestMatchers("/health", "/login").permitAll() // ✅ permite login desde React
                         .requestMatchers(HttpMethod.GET, "/admin/personal/**", "/admin/servicios/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/admin/personal/**", "/admin/servicios/**").hasRole("ADMIN")
@@ -47,16 +47,18 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .formLogin(login -> login
-                        .loginProcessingUrl("/login") // 👈 permite login externo
+                        .loginProcessingUrl("/login") // ✅ endpoint que maneja Spring Security
                         .permitAll()
                 )
-                .logout(logout -> logout.permitAll())
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .permitAll()
+                )
                 .httpBasic(httpBasic -> {});
         return http.build();
     }
 
-
-    // 🌍 Configuración global de CORS (para localhost y vercel)
+    // 🌍 Configuración global de CORS (para frontend en localhost y Vercel)
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -66,7 +68,8 @@ public class SecurityConfig {
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // 🔑 permite cookies (JSESSIONID)
+        config.setAllowCredentials(true); // ✅ necesario para mantener sesión (cookie JSESSIONID)
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
